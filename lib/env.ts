@@ -19,9 +19,7 @@ const envSchema = z.object({
   // Transcription
   GROQ_API_KEY: z.string().optional(),
   DEEPGRAM_API_KEY: z.string().optional(),
-
-  // Google Integration
-  GOOGLE_SHEETS_SPREADSHEET_ID: z.string().optional(),
+  ASSEMBLYAI_API_KEY: z.string().optional(),
 
   // App Config
   NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),

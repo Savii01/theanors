@@ -43,9 +43,9 @@ TheAnors is a modular monolith platform with five interconnected workflows:
 5. **Initial Comments**
 
 All workflows:
-- Accept user guidelines/prompts as system context
-- Use Gemini API (swappable to Claude/OpenAI later)
-- Store decisions in dual databases for feedback loops
+- Accept user guidelines/prompts as system context via a per-workflow chatbot interface
+- Leverage a Multi-Model LLM Gateway (Groq, Gemini, Qwen, etc.) selected via a dropdown
+- Store decisions in dual databases for feedback loops (self-training)
 - Export to multiple formats (Markdown, PDF, Word, CSV)
 - Mobile-friendly interface
 
@@ -189,49 +189,63 @@ All workflows:
 
 ### 4.4 Newsletter Creation
 
-**Purpose:** Generate weekly newsletter content with theme validation.
+**Purpose:** Generate weekly newsletter content using uploaded Excel theme history, Gemini LLM theme generation, multi-post theme validation, and Word export.
 
 **Workflow:**
 
-1. User manually inputs weekly theme (Friday delivery)
-2. Tool accesses theme history spreadsheet (Google Sheets/Excel upload)
-3. Tool suggests LinkedIn posts from founder's personal page that fit theme:
-   - User provides LinkedIn post links or tool validates from history
-   - Tool reads post content
-   - Tool validates: "Does this post fit the theme?"
-   - If flagged as "close but not quite" or rejected, user can:
-     - Accept rejection (find different post)
-     - Request iteration (tool suggests edits to theme or post selection)
-4. Once post selected, tool generates newsletter content:
-   - Intro tying to theme
-   - Main body (expanding on post insights)
-   - Call-to-action
-5. User reviews and approves (can send externally)
-6. Export as Word document
+1. **Excel Theme History Upload:**
+   - User uploads an Excel spreadsheet (`.xlsx`/`.xls`/`.csv`) containing historical newsletter themes, past topics, and content performance.
+   - The application parses and stores the theme history locally without needing external Google Sheets API links.
+
+2. **AI Theme Generation & Selection (Multi-Model LLM):**
+   - The selected LLM analyzes the uploaded Excel spreadsheet archive to brainstorm and suggest brand-new, relevant newsletter themes.
+   - User can select one of the LLM-generated themes or manually enter/refine a weekly theme (for Friday delivery).
+
+3. **Multi-Post Input (2+ LinkedIn Posts):**
+   - User brings **two or more LinkedIn posts** related to the selected theme (providing post links or post content).
+
+4. **Multi-Post Validation (Multi-Model LLM):**
+   - The selected LLM evaluates the 2+ LinkedIn posts against the chosen theme:
+     - Checks individual fit of each post to the overall theme.
+     - Evaluates synergy, cohesion, and narrative flow across all provided posts.
+     - Provides a validation report (fit score, alignment rationale, soft flags, or refinement suggestions).
+   - If flagged as "close but not quite" or rejected, user can adjust post selection or request theme/angle iterations.
+
+5. **Newsletter Content Generation (Multi-Model LLM):**
+   - Once validated, the selected LLM synthesizes the 2+ LinkedIn posts and theme to draft the full newsletter:
+     - Intro tying the theme and posts together
+     - Main body (expanding on key insights synthesized from all selected posts)
+     - Actionable takeaways and Call-to-Action (CTA)
+
+6. **Review & Export:**
+   - User reviews, edits, and approves the generated newsletter.
+   - Export draft as a Microsoft Word document (`.docx`).
 
 **Input:**
-- Theme (manual input)
-- Theme history spreadsheet (uploaded once per month)
-- LinkedIn post links
+- Uploaded Excel spreadsheet (`.xlsx`/`.xls`/`.csv` file containing theme history)
+- Selected or LLM-generated weekly theme
+- Two or more LinkedIn posts (links or content text)
 
 **Output:**
-- Word document (ready to send)
-- Theme + post validation report
+- Word document (`.docx` ready to send)
+- LLM theme recommendations
+- Multi-post theme validation & alignment report
 
 **Frequency:** Weekly (Fridays)
 
 **Validation Logic:**
-- Hard yes/no for old posts (they fit or don't)
-- Soft flags ("close but not quite") for borderline posts
-- Iteration loop if needed (suggest edits)
-- No auto-suggest (user selects from available posts)
+- Dual/Multi-post cohesion analysis (validates that 2+ posts work together under the theme)
+- Soft flags ("close but not quite") for borderline post combinations
+- Gemini LLM iteration loop for theme/post refinement
 
 **Key Features:**
-- Theme history tracking
-- Post validation against theme
-- Multi-option iteration
-- Word document export
+- Direct Excel spreadsheet upload & local parsing (no Google Sheets link required)
+- LLM theme ideation from Excel archive
+- LLM multi-post theme validation (2+ posts)
+- Multi-post content synthesis into newsletter
+- Word document export (`.docx`)
 - External approval loop
+
 
 ---
 
@@ -336,27 +350,36 @@ All workflows:
 
 ## 7. API Strategy
 
-### 7.1 Abstracted API Layer
+### 7.1 Multi-Model LLM Layer
 
-All LLM calls go through abstracted provider layer:
+The application routes text generation requests through a multi-model gateway. Next to each chatbot prompt input, the user selects their preferred model from a dropdown menu. All models are accessed via free tiers:
 
-```
-App Request → API Abstraction Layer → Gemini (now)
-                                    → Claude (later)
-                                    → OpenAI (later)
-```
+1. **allam-2-7b:** 30 req/min, 7,000 req/day (500K tokens/day limit)
+2. **groq/compound:** 30 req/min, 250 req/day (No token limit)
+3. **groq/compound-mini:** 30 req/min, 250 req/day (No token limit)
+4. **qwen/qwen3.6-27b:** 30 req/min, 1,000 req/day (200K tokens/day limit)
+5. **openai/gpt-oss-120b:** 30 req/min, 1,000 req/day (200K tokens/day limit)
+6. **openai/gpt-oss-20b:** 30 req/min, 1,000 req/day (200K tokens/day limit)
+7. **Gemini:** 10 req/min, 1,000 req/day (Free tier)
 
-Swapping providers = config change, not code rewrite.
+**Limits Behavior:**
+- If the user exhausts a model's daily quota, the system alerts them in the UI to switch to a different model.
+- All request quotas automatically reset at **1:00 AM WAT** daily.
+- All models must strictly inherit and follow the **Global Brand Voice** and the **Workflow Master Prompt** assembled at runtime.
 
-### 7.2 Transcription APIs
+### 7.2 Cascading Transcription System (Silent Auto-Failover)
 
-Current stack (from existing tool):
-- Groq (Whisper)
-- Deepgram
-- Gladia
-- Assembly AI
+For audio and video transcription tasks, the application routes the input through a cascading failover system to ensure 100% availability without out-of-pocket costs:
 
-Keep existing infrastructure, don't rebuild.
+1. **Groq Whisper (whisper-large-v3 / whisper-large-v3-turbo):** Primary choice. Free, fast. 20 requests/minute, 2,000 requests/day, 8 hours (28,800 seconds) of audio per day. Resets at 1:00 AM WAT.
+2. **Deepgram:** Secondary choice. Silent automatic fallback. Capped at a **maximum of 30 minutes total use** (uses $200 trial credits, does not refresh).
+3. **AssemblyAI:** Tertiary choice. Silent automatic fallback. Capped at a **maximum of 20 minutes total use** (uses $50 trial credits, does not refresh).
+4. **Gemini API:** Final safety net. Direct audio/video processing capability of the Gemini free tier.
+
+**Transcription Confirmation Flow:**
+- After any transcription completes, the raw text is displayed to the user.
+- The user reviews the transcript, edits/corrects any misheard words manually, and clicks a **Confirm** button.
+- Clicking "Confirm" triggers the next workflow step (e.g., generating caption styles or scripting repurposing). This confirmation step applies uniformly to all transcription providers.
 
 ### 7.3 Vision/OCR
 
@@ -366,6 +389,9 @@ Keep existing infrastructure, don't rebuild.
 ---
 
 ## 8. Prompts & Guidelines
+
+**Global Context:**
+- **Global Brand Voice:** A shared input field storing the founder's overarching voice, brand information, and core KPIs. This context is injected into *every* workflow request.
 
 **Master Prompts by Workflow:**
 
@@ -404,73 +430,97 @@ User provides these once, system uses them for all requests.
 ## 9. User Interface Requirements
 
 **Design System:**
-- Font: Arial
-- Spacing: Tight (compact layout)
-- Colors: Black/white base + crimson red accent
-- Responsive: Mobile-first (accessible on phone)
+- **Font:** Arial (custom WOFF system font)
+- **Spacing:** Tight (compact mobile-first layout built with TailwindCSS and GSAP animations)
+- **Colors:** Brand Green (Forest Green #1C5308, Sage Green #4F8238, Lime Green #D6FFB9) + Brand Blue (Vibrant Blue #005FF8, Sky Blue #9FC9FD) + Brand Pink (Vibrant Pink #FF99FF, Lavender Pink #FEE0FC) as accents.
+- **Responsive:** Mobile-first (viewport width 380px minimum)
+
+**Common Interface Elements (On All Generation Screens):**
+1. **Global Reset Timer:** Displays countdown to daily 1:00 AM WAT reset (e.g., "Limits reset in 4h 23m").
+2. **LLM Dropdown Selector:** Located adjacent to generation inputs. Shows list of available models (groq/compound, qwen3.6-27b, allam-2-7b, openai/gpt-oss-120b, gemini, etc.) along with their current usage and daily request counts.
+3. **Limit Reached Panel:** If a chosen LLM's limit is hit, shows a friendly alert card in Lavender Pink: *"You hit the daily limit for [Model], please change the dropdown menu to a different model to keep chatting/generating for free!"*
+4. **Self-Learning Feedback Indicators:** Every generated output has actions:
+   - **Accept** (positive feedback log)
+   - **Edit** (stores modifications in Neon DB)
+   - **Keep in Memory Toggle** (saves custom preference in Neon context)
+   - **Forget/Delete Learning Button** (clears learning pattern for this choice)
 
 **Key Screens:**
 
 1. **Dashboard**
-   - Quick stats (engagement posted today, scripts approved, newsletters sent)
-   - Quick links to each workflow
+   - Quick stats (engagement comments posted today, scripts approved, newsletters drafted, reset countdown).
+   - Quick links to each workflow.
+   - Global Brand Voice Panel: A shared textarea storing founder's voice details, brand info, and target KPIs injected into all workflow calls.
 
 2. **Content Scripting**
-   - Input: guidelines, topic, link (if repurposing)
-   - Output: 3 script options, expandable details
-   - Action: Select, export, send to founder
+   - Workflow Chatbot: Local chatbot interface with editable master prompt.
+   - Input: Guidelines, topic, URL link (IG/TikTok/YouTube) or audio/video file.
+   - Transcription Preview Panel: Shows raw transcript + manual "Confirm" button (active for any video/audio input).
+   - Output: 3 generated script options (talking head, trend acting, carousel text, flyer text) with a model selector dropdown.
+   - Action: Edit, export (Markdown/PDF/Word), toggle "Keep in memory".
 
 3. **Engagement**
-   - Batch input: paste 5-30 LinkedIn links
-   - Output: 3 comments per link in order
-   - Progress bar: 8/30 done
-   - Platform filter: show LinkedIn/IG/TikTok separately
-   - Action: Select comment, copy, mark as posted
+   - Workflow Chatbot: Local chatbot interface with editable master prompt.
+   - Batch Input: Textarea to paste 5–30 LinkedIn links.
+   - Model Dropdown: Multi-model selection with live limit displays.
+   - Output: Staggered reveal of 3 comment options per link. original post text visible.
+   - Progress Bar: Fills smoothly (e.g., "8 of 30 completed") using GSAP.
+   - Action: Select option, copy, mark as posted, swipe to archive.
 
 4. **Captions**
-   - Input: upload video or paste script
-   - Status: "Transcribing..." → "Generating captions..."
-   - Output: 5 captions (LinkedIn, TikTok, IG, YouTube title, YouTube desc)
-   - Action: Edit, copy, export
+   - Workflow Chatbot: Local chatbot interface with editable master prompt.
+   - Input: Video file upload, video link, or pasted script.
+   - Transcription Selector: Select preferred transcription engine (shows remaining minutes/quota).
+   - Transcription Preview Panel: Displays transcribed text + manual "Confirm" button. Proceeding to caption generation is blocked until the user clicks confirm.
+   - Output: 5 captions (LinkedIn, TikTok, Instagram, YouTube title, YouTube description).
+   - Action: Edit, copy, export (TXT, SRT/VTT subtitles, CSV).
 
 5. **Newsletter**
-   - Input: theme + theme history upload
-   - Action: Paste LinkedIn post link, validate
-   - Output: Newsletter draft in Word format
-   - Action: Review, approve, export
+   - Workflow Chatbot: Local chatbot interface with editable master prompt.
+   - Input: Excel theme history file upload (`.xlsx`/`.xls`/`.csv` parsed locally) + 2 or more LinkedIn post inputs (URLs or text).
+   - Theme Generator: Gemini/LLM analyzes Excel and generates a list of weekly theme recommendations.
+   - Cohesion Report Panel: Visual report validating if the 2+ LinkedIn posts align with the selected theme (scores, warnings, alignment details).
+   - Output: Complete newsletter draft (intro, main points, call-to-action).
+   - Action: Review, approve, export as Word (`.docx`).
 
 6. **Initial Comments**
-   - Input: Post link or content
-   - Output: 3 comment options
-   - Action: Select, copy, mark posted
+   - Workflow Chatbot: Local chatbot interface with editable master prompt.
+   - Input: Post link or raw text + platform type.
+   - Output: 3 initial comment options (witty, thoughtful, platform-specific tone).
+   - Action: Select, copy, mark posted.
 
 7. **Settings**
-   - Master prompts (one per workflow)
-   - Platform accounts (which LinkedIn, IG, etc)
-   - Export preferences
-   - Data export/backup
+   - Global Brand Voice input textarea.
+   - Master prompts editor (tabbed panels to modify default prompts for each workflow).
+   - API keys entry panel (Groq, Gemini, Deepgram, AssemblyAI, Supabase, Neon).
+   - Data management: view training memory list, delete specific memories, download analytical backup.
 
 ---
+
 
 ## 10. Tech Stack
 
 **Frontend:**
-- Next.js (React) with App Router
+- Next.js (React 19) with App Router
 - TypeScript
-- Tailwind CSS (design system variables for Arial, colors, spacing)
+- Tailwind CSS (for structure, custom colors, WOFF font, tight spacing)
+- GSAP (GreenSock Animation Platform) + utility animation libraries (for clean, snappy, slop-free micro-interactions, page swaps, list reveals)
 
 **Backend:**
-- Next.js API routes (modular by feature)
+- Next.js API routes (modular by feature, handling prompt routing and transcription cascades)
 - Node.js runtime
 
-**Databases:**
-- Supabase (PostgreSQL, real-time)
-- Neon (PostgreSQL, analytics)
+**Databases (Dual-Storage & Self-Learning):**
+- Supabase (PostgreSQL, real-time database for active sessions, user inputs, and workflow configs)
+- Neon (PostgreSQL, analytics database for decision logging, feedback pattern tracking, and self-learning calculations)
 
-**APIs:**
-- Gemini (LLM, free tier for MVP)
-- Google Vision (OCR)
-- Existing transcription stack (Groq, Deepgram, Gladia, Assembly)
+**APIs & Free Engines:**
+- Groq API (whisper-large-v3, allam-2-7b, groq/compound, qwen3.6-27b, gpt-oss-120b, etc.)
+- Gemini API (theme suggestions, multi-post newsletter compilation, 4th fallback transcription)
+- Deepgram API (transcription backup, max 30 mins total)
+- AssemblyAI API (transcription backup, max 20 mins total)
+- Google Vision API (OCR for Instagram/TikTok images)
+- Local Excel Parser (xlsx / SheetJS for parsing uploaded xlsx/csv theme archives)
 
 **File Export:**
 - markdown-to-pdf (for generating PDFs)

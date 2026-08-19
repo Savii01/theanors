@@ -5,48 +5,44 @@
 **Platform:** Web + Mobile (Mobile-first)
 
 ---
-
 ## 1. Design Principles
 
 1. **Simplicity:** Remove all noise. One action per screen.
 2. **Clarity:** Use clear hierarchy. User always knows what to do next.
 3. **Compact:** Tight spacing. Mobile screens are real estate.
-4. **Accessible:** High contrast. Crimson red accent on black/white for visibility.
-5. **Professional:** No playful gradients. Serious tool for serious work.
+4. **Accessible:** High contrast. Vibrant blue and dark green elements on off-white/white backgrounds for clear readability.
+5. **Professional:** Clean layout. Solid brand palette, modern micro-interactions, no generic AI slop.
 
 ---
 
 ## 2. Color Palette
 
-**Primary Colors:**
+The color system is derived from the brand palette specified in [color theme.pdf](file:///C:/Projects/theanors/docs/color%20theme.pdf). It features high contrast, professional tones, and clear separation of active/interactive states.
 
-```
-Primary Black:    #000000
-Primary White:    #FFFFFF
-Accent Red:       #DC143C (Crimson)
-```
+**Brand Green (Primary Theme):**
+- **Forest Green (Dark):** `#1C5308` — Primary brand color. Used for page titles, headers, navigation text, and structural accents.
+- **Sage Green (Medium):** `#4F8238` — Used for active state borders, secondary indicators, and icons.
+- **Lime Green (Light/Pastel):** `#D6FFB9` — Light background for alerts, tips, active cards, or highlighting theme matches.
 
-**Secondary Colors:**
+**Brand Blue (Interactions & CTAs):**
+- **Vibrant Blue (Electric):** `#005FF8` — Primary interactive components, links, and main action buttons.
+- **Sky Blue (Light):** `#9FC9FD` — Soft backdrop for blue active states, progress fills, and text message bubbles.
 
-```
-Light Gray:       #F5F5F5 (for backgrounds)
-Medium Gray:      #E0E0E0 (for borders)
-Dark Gray:        #333333 (for secondary text)
-Red Light:        #E63946 (hover state for red)
-```
+**Brand Pink (Self-Training & Feedback):**
+- **Vibrant Pink (Magenta):** `#FF99FF` — Used for "Keep in Memory" and other self-learning feedback triggers.
+- **Lavender Pink (Light):** `#FEE0FC` — Light backdrop for AI learning card hints, memory toggles, and feedback logs.
 
-**Usage:**
-- **Black (#000000):** Text, headers, strong emphasis
-- **White (#FFFFFF):** Page background, card backgrounds
-- **Crimson (#DC143C):** Call-to-action buttons, active states, highlights, alerts
-- **Light Gray (#F5F5F5):** Secondary backgrounds, inactive states
-- **Medium Gray (#E0E0E0):** Borders, dividers, disabled states
-- **Dark Gray (#333333):** Secondary text, captions, metadata
+**Neutral Gray Scale:**
+- **Background Gray:** `#F5F5F5` — Main page and app background color, secondary panels, and disabled backgrounds.
+- **Medium Gray:** `#E0E0E0` — Borders, dividers, disabled button backgrounds.
+- **Charcoal (Dark Gray):** `#333333` — Body text, help text, placeholders, and inactive controls.
+- **White:** `#FFFFFF` — Cards, forms, active text input containers, and standard container backdrops.
 
-**Accessibility:**
-- Crimson on white: Contrast ratio 5.5:1 ✓ (WCAG AA compliant)
-- Black on white: Contrast ratio 21:1 ✓ (WCAG AAA compliant)
-- Never use red alone to convey information (always pair with text/icon)
+**Usage Rules:**
+- Primary CTAs and links use **Vibrant Blue (#005FF8)**.
+- Structural elements and headers use **Forest Green (#1C5308)**.
+- Interactive states (hover/active) for blue components transition to a slightly deeper blue.
+- Self-training logs and controls use **Vibrant Pink (#FF99FF)** or **Lavender Pink (#FEE0FC)** to visually separate AI system feedback.
 
 ---
 
@@ -160,15 +156,15 @@ Gap (flex/grid):    SM (8px)
 **Primary Button (Call-to-Action):**
 
 ```
-Background:     Crimson (#DC143C)
+Background:     Vibrant Blue (#005FF8)
 Text:           White (#FFFFFF)
 Font:           13px Bold
 Padding:        8px 16px (SM top/bottom, LG left/right)
 Border:         None
-Border Radius:  2px (minimal)
+Border Radius:  4px (clean modern corner)
 Cursor:         pointer
-Hover:          Background #E63946 (Red Light)
-Active:         Background #B81228 (darker red)
+Hover:          Background #004ecc (slightly darker blue)
+Active:         Background #003da0 (deeper blue)
 Disabled:       Background #E0E0E0 (gray), cursor not-allowed
 ```
 
@@ -176,20 +172,20 @@ Disabled:       Background #E0E0E0 (gray), cursor not-allowed
 
 ```
 Background:     White (#FFFFFF)
-Text:           Black (#000000)
+Text:           Forest Green (#1C5308)
 Font:           13px Bold
 Padding:        8px 16px
-Border:         1px solid Medium Gray (#E0E0E0)
-Border Radius:  2px
-Hover:          Background Light Gray (#F5F5F5)
-Active:         Background #E0E0E0
+Border:         1px solid Sage Green (#4F8238)
+Border Radius:  4px
+Hover:          Background Lime Green (#D6FFB9) / Text #1C5308
+Active:         Background #c2f59f
 ```
 
 **Tertiary Button (Link-style):**
 
 ```
 Background:     Transparent
-Text:           Crimson (#DC143C)
+Text:           Vibrant Blue (#005FF8)
 Font:           13px Bold
 Padding:        0
 Border:         None
@@ -199,9 +195,9 @@ Hover:          Text-decoration: underline
 **State Indicators on Buttons:**
 
 ```
-Submitted ✓:    Text changes to "Done" or shows checkmark icon
-Loading:        Shows spinner icon to right of text
-Error:          Background becomes red, text becomes white, shows error icon
+Submitted ✓:    Text changes to "Confirmed" or shows checkmark icon
+Loading:        Shows rotating SVG spinner to right of text
+Error:          Background becomes Charcoal (#333333), text becomes White, shows error icon
 ```
 
 ---
@@ -212,25 +208,25 @@ Error:          Background becomes red, text becomes white, shows error icon
 
 ```
 Background:     White (#FFFFFF)
-Text:           Black (#000000)
+Text:           Charcoal (#333333)
 Font:           13px Regular
 Border:         1px solid Medium Gray (#E0E0E0)
-Border Radius:  2px
+Border Radius:  4px
 Padding:        8px 12px (SM vertical, MD horizontal)
-Placeholder:    Dark Gray (#333333) at 60% opacity
+Placeholder:    Charcoal (#333333) at 60% opacity
 
-Focus:          Border-color Crimson (#DC143C), outline none
-Focus-ring:     2px crimson outset (accessibility)
+Focus:          Border-color Forest Green (#1C5308), outline none
+Focus-ring:     2px Forest Green (#1C5308) solid (accessibility)
 
 Disabled:       Background Light Gray (#F5F5F5), cursor not-allowed
-Error:          Border-color red, show error icon to right
+Error:          Border-color Vibrant Pink (#FF99FF), show warning label below
 ```
 
 **Label:**
 
 ```
 Font:           13px Bold
-Color:          Black (#000000)
+Color:          Forest Green (#1C5308)
 Margin-bottom:  8px
 ```
 
@@ -238,7 +234,7 @@ Margin-bottom:  8px
 
 ```
 Font:           11px Regular
-Color:          Dark Gray (#333333) for help, Crimson for error
+Color:          Charcoal (#333333) for help, Vibrant Pink (#FF99FF) for error
 Margin-top:     4px
 ```
 
@@ -251,9 +247,9 @@ Margin-top:     4px
 ```
 Background:     White (#FFFFFF)
 Border:         1px solid Medium Gray (#E0E0E0)
-Border Radius:  2px
+Border Radius:  4px
 Padding:        12px (MD)
-Box Shadow:     None (or minimal: 0 1px 3px rgba(0,0,0,0.1))
+Box Shadow:     0 1px 3px rgba(0,0,0,0.05) (very clean, subtle shadow)
 Margin-bottom:  12px (between cards)
 ```
 
@@ -261,7 +257,7 @@ Margin-bottom:  12px (between cards)
 
 ```
 Font:           16px Bold
-Color:          Black (#000000)
+Color:          Forest Green (#1C5308)
 Padding-bottom: 8px
 Border-bottom:  1px solid Medium Gray (#E0E0E0)
 Margin-bottom:  12px
@@ -271,7 +267,7 @@ Margin-bottom:  12px
 
 ```
 Font:           13px Regular
-Color:          Black (#000000)
+Color:          Charcoal (#333333)
 Line-height:    1.5
 ```
 
@@ -284,11 +280,11 @@ Line-height:    1.5
 ```
 Container:      Full width, height 6px
 Background:     Light Gray (#F5F5F5)
-Filled:         Crimson (#DC143C)
+Filled:         Vibrant Blue (#005FF8)
 Border:         1px solid Medium Gray (#E0E0E0)
-Border Radius:  1px
+Border Radius:  3px
 
-Label Above:    "8 of 30 posts completed" (12px regular, dark gray)
+Label Above:    "8 of 30 posts completed" (12px regular, charcoal)
 ```
 
 **CSS:**
@@ -298,12 +294,12 @@ Label Above:    "8 of 30 posts completed" (12px regular, dark gray)
   background-color: #F5F5F5;
   border: 1px solid #E0E0E0;
   height: 6px;
-  border-radius: 1px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-fill {
-  background-color: #DC143C;
+  background-color: #005FF8;
   height: 100%;
   transition: width 0.3s ease;
 }
@@ -323,13 +319,13 @@ Padding:        0
 Tab Item:
   Padding:      12px 16px (MD vertical, LG horizontal)
   Font:         13px Bold
-  Color:        Dark Gray (#333333)
+  Color:        Charcoal (#333333)
   Border:       None
   Hover:        Background Light Gray (#F5F5F5)
   
 Active Tab:
-  Color:        Black (#000000)
-  Border-bottom: 2px solid Crimson (#DC143C)
+  Color:        Forest Green (#1C5308)
+  Border-bottom: 2px solid Forest Green (#1C5308)
 ```
 
 ---
@@ -339,7 +335,7 @@ Active Tab:
 **Overlay:**
 
 ```
-Background:     Black (#000000) at 50% opacity
+Background:     Charcoal (#333333) at 50% opacity
 ```
 
 **Modal Box:**
@@ -347,9 +343,9 @@ Background:     Black (#000000) at 50% opacity
 ```
 Background:     White (#FFFFFF)
 Border:         1px solid Medium Gray (#E0E0E0)
-Border Radius:  2px
+Border Radius:  4px
 Padding:        20px (XL)
-Box Shadow:     0 4px 12px rgba(0,0,0,0.15)
+Box Shadow:     0 4px 20px rgba(0,0,0,0.08)
 Max-width:      600px
 Width:          90% on mobile
 ```
@@ -358,7 +354,7 @@ Width:          90% on mobile
 
 ```
 Font:           20px Bold
-Color:          Black (#000000)
+Color:          Forest Green (#1C5308)
 Margin-bottom:  12px
 ```
 
@@ -366,6 +362,7 @@ Margin-bottom:  12px
 
 ```
 Font:           13px Regular
+Color:          Charcoal (#333333)
 Margin-bottom:  16px (LG)
 ```
 
@@ -377,6 +374,7 @@ Border-top:     1px solid Medium Gray (#E0E0E0)
 Text-align:     Right
 Button gap:     8px (SM)
 ```
+
 
 ---
 
@@ -477,7 +475,7 @@ Dashboard
   [Progress bar]
   ████████░░░  8 of 30
   
-  [Button (Crimson, White text)]
+  [Button (Vibrant Blue, White text)]
   Generate Comments
 ```
 
@@ -488,7 +486,7 @@ Dashboard
   Post Content (13px)
   "Great insights on AI..."
   
-  [Option 1 Heading (14px Bold Crimson)]
+  [Option 1 Heading (14px Bold Forest Green)]
   ✓ Option 1
   "I completely agree..."
   [Button - Copy]
@@ -510,7 +508,7 @@ Dashboard
 [Tabs (White bg, gray bottom border)]
 Engagement | Captions | Newsletter | Scripting | Comments
 
-[Active tab - Bold Black, Crimson underline]
+[Active tab - Bold Forest Green, Forest Green underline]
 [Inactive - Dark Gray, Light Gray hover]
 ```
 
@@ -577,9 +575,12 @@ module.exports = {
     colors: {
       black: '#000000',
       white: '#FFFFFF',
-      'crimson': '#DC143C',
-      'crimson-dark': '#B81228',
-      'crimson-light': '#E63946',
+      'brand-green': '#1C5308',
+      'brand-green-light': '#D6FFB9',
+      'brand-blue': '#005FF8',
+      'brand-blue-dark': '#004ecc',
+      'brand-pink': '#FF99FF',
+      'brand-pink-light': '#FEE0FC',
       'gray-light': '#F5F5F5',
       'gray-medium': '#E0E0E0',
       'gray-dark': '#333333',
@@ -619,9 +620,9 @@ export function Button({
   const baseStyles = 'font-bold rounded transition-colors'
   
   const variantStyles = {
-    primary: 'bg-crimson text-white hover:bg-crimson-light disabled:bg-gray-medium',
-    secondary: 'bg-white text-black border border-gray-medium hover:bg-gray-light',
-    tertiary: 'bg-transparent text-crimson hover:underline'
+    primary: 'bg-brand-blue text-white hover:bg-brand-blue-dark disabled:bg-gray-medium',
+    secondary: 'bg-white text-brand-green border border-gray-medium hover:bg-brand-green-light',
+    tertiary: 'bg-transparent text-brand-blue hover:underline'
   }
   
   const sizeStyles = {
@@ -690,7 +691,7 @@ export function ProgressBar({ current, total, label }: ProgressBarProps) {
       )}
       <div className="w-full h-1.5 bg-gray-light border border-gray-medium rounded-sm overflow-hidden">
         <div
-          className="h-full bg-crimson transition-all duration-300"
+          className="h-full bg-brand-blue transition-all duration-300"
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -733,8 +734,8 @@ export function Input({
       )}
       {type === 'textarea' ? (
         <textarea
-          className={`w-full border rounded-sm p-md text-base focus:outline-none focus:border-crimson focus:ring-2 focus:ring-crimson ${
-            error ? 'border-crimson' : 'border-gray-medium'
+          className={`w-full border rounded-sm p-md text-base focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green ${
+            error ? 'border-brand-pink' : 'border-gray-medium'
           } ${disabled ? 'bg-gray-light cursor-not-allowed' : 'bg-white'}`}
           placeholder={placeholder}
           value={value}
@@ -745,8 +746,8 @@ export function Input({
       ) : (
         <input
           type={type}
-          className={`w-full border rounded-sm p-md text-base focus:outline-none focus:border-crimson focus:ring-2 focus:ring-crimson ${
-            error ? 'border-crimson' : 'border-gray-medium'
+          className={`w-full border rounded-sm p-md text-base focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green ${
+            error ? 'border-brand-pink' : 'border-gray-medium'
           } ${disabled ? 'bg-gray-light cursor-not-allowed' : 'bg-white'}`}
           placeholder={placeholder}
           value={value}
@@ -755,10 +756,57 @@ export function Input({
         />
       )}
       {error && (
-        <p className="text-xs text-crimson mt-xs">
+        <p className="text-xs text-brand-pink mt-xs">
           {error}
         </p>
       )}
+    </div>
+  )
+}
+```
+
+### 9.5 Multi-Model Components
+
+```typescript
+// components/ModelSelector.tsx
+export function ModelSelector({ models, selected, onSelect, limits }) {
+  return (
+    <select className="border border-gray-medium rounded p-sm text-sm" value={selected} onChange={(e) => onSelect(e.target.value)}>
+      {models.map(m => (
+        <option key={m.id} value={m.id}>{m.name} ({limits[m.id].remaining} req left)</option>
+      ))}
+    </select>
+  )
+}
+
+// components/LimitAlert.tsx
+export function LimitAlert({ modelName }) {
+  return (
+    <div className="bg-brand-pink-light border border-brand-pink p-md rounded mb-md text-gray-dark text-sm flex items-center justify-between">
+      <span>You hit the daily limit for <b>{modelName}</b>, please change the dropdown menu to a different model to keep chatting/generating for free!</span>
+    </div>
+  )
+}
+
+// components/CountdownTimer.tsx
+export function CountdownTimer({ hours, minutes }) {
+  return <div className="text-xs text-gray-dark font-bold">Limits reset in {hours}h {minutes}m</div>
+}
+```
+
+### 9.6 Global & Workflow Prompts
+
+```typescript
+// components/ChatbotPanel.tsx
+export function ChatbotPanel({ workflowName, masterPrompt, onUpdatePrompt }) {
+  return (
+    <div className="border border-gray-medium p-md rounded bg-gray-light mb-md">
+      <h3 className="text-h2 text-brand-green mb-sm">{workflowName} Master Prompt</h3>
+      <textarea 
+        className="w-full text-sm p-sm border border-gray-medium rounded h-24"
+        value={masterPrompt}
+        onChange={(e) => onUpdatePrompt(e.target.value)}
+      />
     </div>
   )
 }
@@ -929,12 +977,19 @@ app/
 /* styles/variables.css */
 
 :root {
-  /* Colors */
-  --color-black: #000000;
+  /* Brand Palette from color theme.pdf */
+  --color-green-dark: #1C5308;
+  --color-green-medium: #4F8238;
+  --color-green-light: #D6FFB9;
+  
+  --color-blue-vibrant: #005FF8;
+  --color-blue-light: #9FC9FD;
+  
+  --color-pink-vibrant: #FF99FF;
+  --color-pink-light: #FEE0FC;
+
+  /* Neutrals */
   --color-white: #FFFFFF;
-  --color-crimson: #DC143C;
-  --color-crimson-dark: #B81228;
-  --color-crimson-light: #E63946;
   --color-gray-light: #F5F5F5;
   --color-gray-medium: #E0E0E0;
   --color-gray-dark: #333333;
@@ -978,7 +1033,7 @@ app/
 
 ```css
 .button {
-  background-color: var(--color-crimson);
+  background-color: var(--color-blue-vibrant);
   padding: var(--space-sm) var(--space-lg);
   font-size: var(--font-base);
   transition: all var(--transition-normal);
@@ -987,7 +1042,114 @@ app/
 
 ---
 
-## 16. Print Styles (for exported documents)
+## 16. GSAP Animation System (No AI Slop)
+
+Animations in TheAnors must feel snappy, clean, and serve a functional purpose. We avoid unnecessary spins, bounces, or heavy entrance animations on static text. Every animation is timed to respond to user gestures or state transitions.
+
+We use **GSAP (GreenSock Animation Platform)** with standard Next.js Tailwind classes for layout transitions, stagger reveals, progress updates, and memory archiving.
+
+### 16.1 Layout & Route Transitions
+When switching between main tabs/pages (e.g. Dashboard to Scripting), the content area performs a snappy slide-fade transition to feel responsive.
+
+```typescript
+import { useEffect, useRef } from "react"
+import gsap from "gsap"
+
+export function FadeInLayout({ children }: { children: React.ReactNode }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (containerRef.current) {
+      gsap.fromTo(
+        containerRef.current,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }
+      )
+    }
+  }, [])
+
+  return <div ref={containerRef}>{children}</div>
+}
+```
+
+### 16.2 Staggered List Reveal (Batch Operations)
+When a batch of engagement comments (e.g. 5–30 comments) is generated, rather than popping in instantly or sliding in sluggishly, the cards cascade cleanly.
+
+```typescript
+export function animateListEntry(targets: string) {
+  gsap.fromTo(
+    targets,
+    { opacity: 0, y: 8 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.3,
+      stagger: 0.04,
+      ease: "sine.out"
+    }
+  )
+}
+```
+
+### 16.3 Micro-Interactions on Interactive Elements
+- **Button Clicks:** Snappy compression response to register click input.
+- **GSAP Hover Effect:** Focus rings expand and fade.
+
+```typescript
+// Button press micro-interaction
+export function animateButtonPress(element: HTMLElement) {
+  gsap.timeline()
+    .to(element, { scale: 0.96, duration: 0.08, ease: "power1.inOut" })
+    .to(element, { scale: 1, duration: 0.12, ease: "power2.out" })
+}
+```
+
+### 16.4 Self-Learning Memory swipe-out (Accept/Reject Loop)
+When the user clicks "Keep in memory" or "Forget", the feedback card slides out of view dynamically in the chosen direction before being removed from the DOM structure.
+
+```typescript
+export function animateMemorySlide(element: HTMLElement, direction: "left" | "right", onComplete: () => void) {
+  const xOffset = direction === "right" ? 150 : -150
+  const color = direction === "right" ? "#FF99FF" : "#E0E0E0" // Magenta vs Gray
+  
+  gsap.timeline({ onComplete })
+    .to(element, { 
+      borderColor: color, 
+      backgroundColor: direction === "right" ? "#FEE0FC" : "#F5F5F5",
+      duration: 0.15 
+    })
+    .to(element, { 
+      x: xOffset, 
+      opacity: 0, 
+      height: 0, 
+      paddingTop: 0, 
+      paddingBottom: 0, 
+      marginTop: 0, 
+      marginBottom: 0, 
+      duration: 0.25, 
+      ease: "power2.in" 
+    })
+}
+```
+
+### 16.5 Processing & Loading States
+Instead of a static standard circle, we animate a custom SVG loader that speeds up or loops smoothly using GSAP's timeline rotation.
+
+```typescript
+export function animateLoader(spinnerElement: SVGSVGElement) {
+  return gsap.to(spinnerElement, {
+    rotation: 360,
+    transformOrigin: "50% 50%",
+    repeat: -1,
+    duration: 1,
+    ease: "none"
+  })
+}
+```
+
+---
+
+## 17. Print Styles (for exported documents)
 
 ```css
 /* styles/print.css */
@@ -1030,7 +1192,7 @@ app/
 **If using Figma for mockups:**
 
 1. Create frame at 390px (iPhone SE width)
-2. Set colors to custom palette (black, white, crimson)
+2. Set colors to custom palette (black, white, brand blue, brand green)
 3. Use Arial font (system font)
 4. Create components for Button, Card, Input
 5. Build screens: Dashboard, Engagement, Captions, Newsletter
@@ -1043,15 +1205,15 @@ app/
 
 | Element | Font | Color | Padding | Border |
 |---------|------|-------|---------|--------|
-| Display Title | 28px Bold | Black | - | - |
-| Section Title | 20px Bold | Black | - | - |
-| Heading | 16px Bold | Black | - | - |
-| Body | 13px Regular | Black | - | - |
-| Primary Button | 13px Bold | White on Crimson | 8px 16px | None |
-| Secondary Button | 13px Bold | Black on White | 8px 16px | 1px Gray |
-| Input | 13px Regular | Black | 8px 12px | 1px Gray |
-| Card | 13px Regular | Black | 12px | 1px Gray |
-| Progress Bar | 11px Regular | Crimson | - | 1px Gray |
+| Display Title | 28px Bold | Forest Green | - | - |
+| Section Title | 20px Bold | Forest Green | - | - |
+| Heading | 16px Bold | Forest Green | - | - |
+| Body | 13px Regular | Charcoal | - | - |
+| Primary Button | 13px Bold | White on Vibrant Blue | 8px 16px | None |
+| Secondary Button | 13px Bold | Forest Green on White | 8px 16px | 1px Sage Green |
+| Input | 13px Regular | Charcoal | 8px 12px | 1px Gray |
+| Card | 13px Regular | Charcoal | 12px | 1px Gray |
+| Progress Bar | 11px Regular | Vibrant Blue | - | 1px Gray |
 
 ---
 

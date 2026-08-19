@@ -35,10 +35,11 @@ TheAnors is built as a modular monolith using Next.js. Single codebase, separate
 ┌─────────────────────────────────────────────────────────┐
 │            External Services / APIs                      │
 │                                                         │
-│ • Gemini LLM API (Free tier)                           │
+│ • Multi-Model LLM Gateway (Groq, Gemini, Qwen, etc)     │
+│ • Prompt Assembly Engine                                │
 │ • Google Vision API (OCR, free tier)                   │
 │ • Transcription APIs (Groq, Deepgram, Gladia, Assembly) │
-│ • Google Sheets API (theme history)                    │
+│ • Excel Spreadsheet Parser (xlsx / local upload service)│
 └─────────────────────────────────────────────────────────┘
         ↓
 ┌──────────────────┐         ┌──────────────────┐
@@ -89,9 +90,9 @@ app/
 ```
 
 **Design System:**
-- Font: Arial (via Tailwind + custom CSS)
-- Colors: #000000 (black), #FFFFFF (white), #DC143C (crimson red)
-- Spacing: Tight (4px base unit, compact margins)
+- Font: Arial (custom WOFF system font via Tailwind + custom CSS)
+- Colors: Brand Green (Forest Green #1C5308, Sage Green #4F8238, Lime Green #D6FFB9) + Brand Blue (Vibrant Blue #005FF8, Sky Blue #9FC9FD) + Brand Pink (Vibrant Pink #FF99FF, Lavender Pink #FEE0FC) as accents.
+- Spacing: Tight (4px base unit, compact margins) with smooth GSAP animations.
 - Responsive: Mobile-first (viewport width 380px minimum)
 
 **Key Components:**
@@ -143,15 +144,18 @@ api/
 │   ├── generate-script.ts      (Script generation)
 │   └── export.ts
 ├── newsletter/
-│   ├── validate-post.ts        (Check if post fits theme)
-│   ├── generate-content.ts     (Draft newsletter body)
-│   └── export.ts
+│   ├── upload-excel.ts         (Upload & parse Excel theme history spreadsheet)
+│   ├── generate-themes.ts      (Gemini LLM creates theme ideas from uploaded Excel archive)
+│   ├── validate-posts.ts       (Validate 2+ LinkedIn posts against theme using Gemini LLM)
+│   ├── generate-content.ts     (Draft newsletter body synthesizing multi-posts + theme)
+│   └── export.ts               (Export Word document .docx)
 ├── comments/
 │   ├── generate-initial.ts     (3 comment options)
 │   └── mark-posted.ts
 ├── shared/
-│   ├── prompt-manager.ts       (Load/manage prompts)
-│   ├── llm-client.ts           (Abstracted API calls to Gemini/Claude)
+│   ├── prompt-manager.ts       (Load/manage master prompts)
+│   ├── prompt-assembly.ts      (Combines global voice, workflow prompt, & memory)
+│   ├── llm-client.ts           (Multi-model router for Groq, Gemini, etc.)
 │   ├── ocr-service.ts          (Google Vision OCR)
 │   ├── transcription-service.ts (Groq/Deepgram/etc)
 │   └── database.ts             (Supabase/Neon clients)
@@ -298,7 +302,10 @@ CREATE TABLE newsletters (
   user_id UUID REFERENCES users(id),
   week_date DATE,
   theme VARCHAR NOT NULL,
-  selected_post_link VARCHAR,
+  excel_filename VARCHAR,
+  generated_themes JSONB,
+  selected_post_links JSONB NOT NULL, -- Array of 2+ LinkedIn post links/content
+  validation_report JSONB,
   draft_content TEXT,
   status VARCHAR (draft, approved, sent),
   created_at TIMESTAMP DEFAULT now()
@@ -446,7 +453,17 @@ async function syncToNeon() {
 // Runs nightly at 11 PM UTC
 ```
 
-### 3.4 Backup & Migration Strategy
+### 3.4 Self-Training Engine Architecture
+
+The Self-Training engine analyzes the `feedback_log` nightly to extract user preferences.
+
+**Flow:**
+1. **Log Collection:** Every time a user accepts, edits, or deletes an LLM response, the exact prompt, options, and final choice are saved to Neon.
+2. **Analysis:** A scheduled nightly job processes the logs for pattern recognition (e.g., "User selects short, witty comments 80% of the time").
+3. **Memory Injection:** Extracted patterns are stored in `user_preferences`.
+4. **Context Assembly:** When the `Prompt Assembly Engine` prepares a new request, it fetches these preferences and injects them as `Self-Training Context` into the system prompt.
+
+### 3.5 Backup & Migration Strategy
 
 **Backups:**
 
@@ -478,40 +495,82 @@ Neon:
 
 ## 4. API Integration
 
-### 4.1 Gemini LLM API
+### 4.1 Multi-Model LLM Layer (Gateway & Router)
 
-**Endpoint:** `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent`
+The application integrates multiple LLM providers. Requests are routed dynamically based on the model selected in the UI dropdown.
 
-**Free Tier Limits:**
-- 1,000 requests per day
-- 10 requests per minute
-- 4 requests per minute for vision tasks
+**Model Quotas & Limits:**
+- **allam-2-7b:** 30 requests/min, 7K requests/day (500K tokens/day limit)
+- **groq/compound:** 30 requests/min, 250 requests/day (No token limit)
+- **groq/compound-mini:** 30 requests/min, 250 requests/day (No token limit)
+- **qwen/qwen3.6-27b:** 30 requests/min, 1K requests/day (200K tokens/day limit)
+- **openai/gpt-oss-120b:** 30 requests/min, 1K requests/day (200K tokens/day limit)
+- **Gemini:** 10 requests/min, 1K requests/day
 
-**Usage in TheAnors:**
+All request limits are tracked on a per-model basis and reset automatically at **1:00 AM WAT** daily.
+
+**LLM Client Router Interface:**
 
 ```typescript
-// /lib/gemini-client.ts
+// /lib/shared/llm-client.ts
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import axios from "axios"
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+interface GenerateParams {
+  modelId: string
+  prompt: string
+  globalBrandVoice: string
+  masterWorkflowPrompt: string
+  contextHistory?: any[]
+}
 
-export async function generateContent(prompt: string, context?: object) {
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" })
-  
-  const fullPrompt = `
-    ${masterPrompt}
+export async function generateText({
+  modelId,
+  prompt,
+  globalBrandVoice,
+  masterWorkflowPrompt,
+  contextHistory = []
+}: GenerateParams): Promise<string> {
+  const systemPrompt = `
+    Global Brand voice guidelines:
+    ${globalBrandVoice}
     
-    Context: ${JSON.stringify(context)}
+    Workflow instructions:
+    ${masterWorkflowPrompt}
     
-    User Request: ${prompt}
+    Self-Training Context:
+    ${JSON.stringify(contextHistory)}
   `
-  
-  const result = await model.generateContent(fullPrompt)
-  return result.response.text()
+
+  if (modelId === "gemini") {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    const result = await model.generateContent([systemPrompt, prompt])
+    return result.response.text()
+  } else {
+    // Call Groq / Custom compatible endpoint
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: modelId,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt }
+        ]
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        }
+      }
+    )
+    return response.data.choices[0].message.content
+  }
 }
 ```
 
-**Cost:** Free (until ₦500/month after free tier exhausted)
+**Cost:** Free (quota-managed tiers)
 
 ### 4.2 Google Vision API
 
@@ -541,66 +600,136 @@ export async function extractTextFromImage(imageUrl: string) {
 
 **Cost:** Free for MVP
 
-### 4.3 Transcription APIs
+### 4.3 Transcription APIs & Cascading Failover
 
-**Current Setup (from your existing tool):**
-- Groq (Whisper)
-- Deepgram
-- Gladia
-- Assembly AI
+The system uses a cascading routing service that automatically rotates providers when limits are hit. It tracks usage internally and fallback steps are executed silently.
 
-**Usage:**
+**Limits & Fallback Sequence:**
+1. **Groq Whisper (`whisper-large-v3` / `whisper-large-v3-turbo`):** Default choice. Limit: 28,800 audio seconds per day (8 hours/day). Resets at 1:00 AM WAT.
+2. **Deepgram:** 1st fallback. Capped at a **maximum of 30 minutes total use** (one-time trial credits, does not refresh).
+3. **AssemblyAI:** 2nd fallback. Capped at a **maximum of 20 minutes total use** (one-time trial credits, does not refresh).
+4. **Gemini API:** 3rd fallback. Uses Gemini's native audio/video processing capability.
+
+**Usage and Cascade Logic:**
 
 ```typescript
-// /lib/transcription-service.ts
-// Abstract layer for your existing APIs
+// /lib/shared/transcription-service.ts
+import { GoogleGenerativeAI } from "@google/generative-ai"
 
-interface TranscriptionProvider {
-  transcribe(videoFile: File | url: string): Promise<string>
+interface TranscriptionUsage {
+  groqUsedSeconds: number
+  deepgramUsedSeconds: number
+  assemblyUsedSeconds: number
 }
 
 export class TranscriptionService {
-  private providers = {
-    groq: new GroqProvider(),
-    deepgram: new DeepgramProvider(),
-    gladia: new GladiaProvider(),
-    assemblyai: new AssemblyAIProvider()
+  async transcribe(
+    audioBuffer: Buffer,
+    mimeType: string,
+    usage: TranscriptionUsage
+  ): Promise<string> {
+    // 1. Try Groq Whisper (8 hours / 28,800 sec daily cap)
+    if (usage.groqUsedSeconds < 28800) {
+      try {
+        return await this.transcribeWithGroq(audioBuffer, mimeType)
+      } catch (error) {
+        console.warn("Groq Whisper failed, trying Deepgram...", error)
+      }
+    }
+
+    // 2. Try Deepgram (Capped at 30 minutes / 1,800 seconds total)
+    if (usage.deepgramUsedSeconds < 1800) {
+      try {
+        return await this.transcribeWithDeepgram(audioBuffer, mimeType)
+      } catch (error) {
+        console.warn("Deepgram failed, trying AssemblyAI...", error)
+      }
+    }
+
+    // 3. Try AssemblyAI (Capped at 20 minutes / 1,200 seconds total)
+    if (usage.assemblyUsedSeconds < 1200) {
+      try {
+        return await this.transcribeWithAssembly(audioBuffer, mimeType)
+      } catch (error) {
+        console.warn("AssemblyAI failed, falling back to Gemini...", error)
+      }
+    }
+
+    // 4. Ultimate Fallback: Gemini API Direct File Processing
+    return await this.transcribeWithGemini(audioBuffer, mimeType)
   }
-  
-  async transcribe(videoInput: any, preferredProvider?: string) {
-    const provider = this.providers[preferredProvider || "groq"]
-    return await provider.transcribe(videoInput)
+
+  private async transcribeWithGroq(buffer: Buffer, mime: string): Promise<string> {
+    // Groq API implementation
+    return "transcribed text"
+  }
+
+  private async transcribeWithDeepgram(buffer: Buffer, mime: string): Promise<string> {
+    // Deepgram API implementation
+    return "transcribed text"
+  }
+
+  private async transcribeWithAssembly(buffer: Buffer, mime: string): Promise<string> {
+    // AssemblyAI API implementation
+    return "transcribed text"
+  }
+
+  private async transcribeWithGemini(buffer: Buffer, mime: string): Promise<string> {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: buffer.toString("base64"),
+          mimeType: mime
+        }
+      },
+      "Transcribe the audio exactly. Output only the transcript text."
+    ])
+    return result.response.text()
   }
 }
 ```
 
-**Cost:** Use your existing API credits/tiers
+**Transcription Confirmation Control Flow:**
+Once any provider completes transcription, the raw text is returned to the client and presented in the UI. The Next.js API endpoint updates transcription usage metrics (storing seconds in Supabase). The frontend halts execution until the user manually confirms the text by clicking **"Confirm"**, which routes the text to subsequent workflows.
 
-### 4.4 Google Sheets API
+**Cost:** Free (quota-managed/trial tiers)
 
-**For:** Reading theme history spreadsheet
+### 4.4 Excel Upload & Parsing Service
 
-**Endpoint:** `https://sheets.googleapis.com/v4/spreadsheets/{spreadsheetId}/values/{range}`
+**For:** Reading & parsing uploaded Excel theme history spreadsheet (`.xlsx`/`.xls`/`.csv`)
+
+**Implementation:** Local server-side / API route parsing using `xlsx` (SheetJS) or `exceljs` library. No Google Sheets API linking required.
 
 **Usage:**
 
 ```typescript
-// /lib/sheets-client.ts
-import { google } from "googleapis"
+// /lib/modules/newsletter/excel-parser.ts
+import * as XLSX from "xlsx"
 
-const sheets = google.sheets({ version: "v4", auth })
+export interface ThemeHistoryRecord {
+  theme: string
+  date?: string
+  notes?: string
+}
 
-export async function getThemeHistory(spreadsheetId: string) {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: "A:B" // Theme + Date columns
-  })
+export function parseThemeHistoryExcel(buffer: Buffer): ThemeHistoryRecord[] {
+  const workbook = XLSX.read(buffer, { type: "buffer" })
+  const sheetName = workbook.SheetNames[0]
+  const worksheet = workbook.Sheets[sheetName]
+  const rawData: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet)
   
-  return response.data.values
+  return rawData.map(row => ({
+    theme: row["Theme"] || row["theme"] || row["Topic"] || Object.values(row)[0] || "",
+    date: row["Date"] || row["date"] || "",
+    notes: row["Notes"] || row["notes"] || ""
+  })).filter(item => Boolean(item.theme))
 }
 ```
 
-**Cost:** Free (limited to 100 requests/min)
+**Cost:** Free (processed locally in Next.js environment)
 
 ---
 
@@ -638,7 +767,8 @@ lib/
 │       └── comments.utils.ts
 ├── shared/
 │   ├── database.ts        (Supabase + Neon clients)
-│   ├── llm-client.ts      (Abstracted LLM calls)
+│   ├── llm-client.ts      (Multi-model gateway router)
+│   ├── prompt-assembly.ts (Context/Memory injector)
 │   ├── prompts.ts         (Prompt loading)
 │   ├── ocr.ts
 │   ├── transcription.ts
@@ -851,7 +981,7 @@ SUPABASE_KEY=xxx
 # Neon
 NEON_CONNECTION_STRING=postgresql://xxx
 
-# Google Cloud (Vision API, Sheets API)
+# Google Cloud (Vision API)
 GOOGLE_CLOUD_PROJECT_ID=xxx
 GOOGLE_CLOUD_KEY_FILE=/path/to/key.json
 
@@ -968,9 +1098,11 @@ describe("Engagement Workflow", () => {
 
 ## 12. Performance Considerations
 
-### 12.1 API Rate Limiting
+### 12.1 Multi-Model API Rate Limiting
 
-**Gemini (free tier):** 1,000 requests/day, 10/min
+**Limits:**
+- **Gemini:** 10/min, 1K/day
+- **Groq models:** 30/min, varying daily caps (250 to 7K)
 
 **Rate limiter:**
 
@@ -978,14 +1110,17 @@ describe("Engagement Workflow", () => {
 // /lib/rate-limiter.ts
 import Bottleneck from "bottleneck"
 
-const geminiLimiter = new Bottleneck({
-  minTime: 6000, // 1 request per 6 seconds = 10/min
+export const geminiLimiter = new Bottleneck({
+  minTime: 6000, // 10/min
   maxConcurrent: 1
 })
 
-export const limitedGeminiCall = geminiLimiter.wrap(
-  async (prompt: string) => await generateContent(prompt)
-)
+export const groqLimiter = new Bottleneck({
+  minTime: 2000, // 30/min
+  maxConcurrent: 1
+})
+
+// Usage: wrap API calls based on the selected model.
 ```
 
 ### 12.2 Caching
