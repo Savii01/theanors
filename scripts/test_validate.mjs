@@ -1,19 +1,25 @@
 import dotenv from 'dotenv'
 dotenv.config({ path: '.env.local' })
+
 import { validatePosts } from '../lib/modules/newsletter/newsletter.service.ts'
 
-console.log('Testing validatePosts directly...')
+console.log('Testing validatePosts...')
 try {
   const result = await validatePosts(
-    'AI Operations for Executive Assistants',
+    'AI Operations for Founders',
     [
-      'https://linkedin.com/posts/example1 - Delegation strategies for founders',
-      'https://linkedin.com/posts/example2 - AI tools that save 10 hours a week'
+      'This post is about how founders can save 10 hours using AI automation for content operations.',
+      'This post discusses why delegation is critical for scaling a one-person business beyond 6 figures.'
     ],
     'allam-2-7b',
     'default'
   )
-  console.log('Result from validatePosts:', JSON.stringify(result, null, 2))
+  console.log('SUCCESS:', JSON.stringify(result, null, 2))
 } catch (err) {
-  console.error('Error during validatePosts:', err.response?.status, err.response?.data || err)
+  if (err instanceof Error) {
+    console.error('DETAILED ERROR:', err.message)
+    console.error('STACK:', err.stack)
+  } else {
+    console.error('UNKNOWN ERROR:', err)
+  }
 }
