@@ -142,7 +142,7 @@ async function transcribeWithGemini(buffer: Buffer, mimeType: string): Promise<s
   if (!apiKey) throw new Error('Missing GEMINI_API_KEY')
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' })
 
   const result = await model.generateContent([
     {

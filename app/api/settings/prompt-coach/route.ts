@@ -47,7 +47,7 @@ The complete, updated system prompt text incorporating all past and new rules
 </updated_prompt>`
 
     const responseText = await generateText({
-      modelId: 'allam-2-7b',
+      modelId: 'gemini',
       prompt: coachPrompt,
       globalBrandVoice: '',
       masterWorkflowPrompt: 'You are an AI Prompt Coach that helps users train and customize content models.',

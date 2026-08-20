@@ -12,16 +12,18 @@ export interface LLMModel {
   provider: 'groq' | 'gemini'
   dailyLimit: number
   tokenLimit?: number
+  /** False when the model is currently blocked or unreachable */
+  available?: boolean
 }
 
 export const LLM_MODELS: LLMModel[] = [
-  { id: 'allam-2-7b', name: 'Allam 2 7B', provider: 'groq', dailyLimit: 7000, tokenLimit: 500000 },
-  { id: 'groq/compound', name: 'Groq Compound', provider: 'groq', dailyLimit: 250 },
-  { id: 'groq/compound-mini', name: 'Groq Compound Mini', provider: 'groq', dailyLimit: 250 },
-  { id: 'qwen/qwen3.6-27b', name: 'Qwen 3.6 27B', provider: 'groq', dailyLimit: 1000, tokenLimit: 200000 },
+  { id: 'gemini', name: 'Gemini 3.6 Flash', provider: 'gemini', dailyLimit: 1000 },
   { id: 'openai/gpt-oss-120b', name: 'GPT OSS 120B', provider: 'groq', dailyLimit: 1000, tokenLimit: 200000 },
   { id: 'openai/gpt-oss-20b', name: 'GPT OSS 20B', provider: 'groq', dailyLimit: 1000, tokenLimit: 200000 },
-  { id: 'gemini', name: 'Gemini Flash', provider: 'gemini', dailyLimit: 1000 },
+  { id: 'qwen/qwen3.6-27b', name: 'Qwen 3.6 27B', provider: 'groq', dailyLimit: 1000, tokenLimit: 200000 },
+  { id: 'groq/compound', name: 'Groq Compound', provider: 'groq', dailyLimit: 1000, tokenLimit: 128000 },
+  { id: 'groq/compound-mini', name: 'Groq Compound Mini', provider: 'groq', dailyLimit: 1000, tokenLimit: 128000 },
+  { id: 'allam-2-7b', name: 'Allam 2 7B', provider: 'groq', dailyLimit: 7000, tokenLimit: 500000 },
 ]
 
 export interface TranscriptionUsage {

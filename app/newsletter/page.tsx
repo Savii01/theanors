@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/Input'
 import { ModelSelector } from '@/components/ui/ModelSelector'
 import { LimitAlert } from '@/components/ui/LimitAlert'
 import { ChatbotPanel } from '@/components/ui/ChatbotPanel'
+import { WorkflowChatPanel } from '@/components/ui/WorkflowChatPanel'
+import { PostLinkPreview } from '@/components/ui/PostLinkPreview'
 import { FeedbackActions } from '@/components/ui/FeedbackActions'
 import { LLM_MODELS } from '@/lib/shared/types'
 import type { ThemeRecord, ModelLimits } from '@/lib/shared/types'
@@ -29,7 +31,7 @@ type NewsletterTab = 'themes' | 'compose'
 export default function NewsletterPage() {
   const [activeTab, setActiveTab] = useState<NewsletterTab>('themes')
   const [masterPrompt, setMasterPrompt] = useState('')
-  const [selectedModel, setSelectedModel] = useState('allam-2-7b')
+  const [selectedModel, setSelectedModel] = useState('gemini')
   const [limits, setLimits] = useState<ModelLimits>({})
   const [themeHistory, setThemeHistory] = useState<ThemeRecord[]>([])
   const [generatedThemes, setGeneratedThemes] = useState<string[]>([])
@@ -40,6 +42,9 @@ export default function NewsletterPage() {
   const [newsletterContent, setNewsletterContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [limitHit, setLimitHit] = useState('')
+  const [uploadedFileName, setUploadedFileName] = useState('')
+  const [uploadedThemeCount, setUploadedThemeCount] = useState(0)
+  const [themeHistoryExpanded, setThemeHistoryExpanded] = useState(false)
 
   useEffect(() => {
     fetch('/api/settings/prompts/newsletter')
@@ -63,6 +68,35 @@ export default function NewsletterPage() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('theanors_newsletter_state')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.selectedTheme) setSelectedTheme(parsed.selectedTheme)
+        if (parsed.customTheme) setCustomTheme(parsed.customTheme)
+        if (Array.isArray(parsed.postLinks) && parsed.postLinks.length > 0) setPostLinks(parsed.postLinks)
+        if (parsed.newsletterContent) setNewsletterContent(parsed.newsletterContent)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      const hasState = selectedTheme || customTheme || postLinks.some(l => l.trim()) || newsletterContent
+      if (hasState) {
+        localStorage.setItem('theanors_newsletter_state', JSON.stringify({
+          selectedTheme,
+          customTheme,
+          postLinks,
+          newsletterContent,
+        }))
+      } else {
+        localStorage.removeItem('theanors_newsletter_state')
+      }
+    } catch {}
+  }, [selectedTheme, customTheme, postLinks, newsletterContent])
+
   const handleExcelUpload = async (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -73,6 +107,8 @@ export default function NewsletterPage() {
         console.error('Excel upload error:', data.error)
         return
       }
+      setUploadedFileName(file.name)
+      setUploadedThemeCount(data.themes?.length ?? 0)
       // Merge with any existing history (DB may already have some)
       setThemeHistory((prev) => {
         const existing = new Set(prev.map((t) => t.theme))
@@ -249,6 +285,25 @@ export default function NewsletterPage() {
 
       {limitHit && <LimitAlert modelName={limitHit} />}
 
+      {(selectedTheme || customTheme || newsletterContent || postLinks.some(l => l.trim())) && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedTheme('')
+              setCustomTheme('')
+              setPostLinks(['', ''])
+              setNewsletterContent('')
+              setValidation(null)
+              try { localStorage.removeItem('theanors_newsletter_state') } catch {}
+            }}
+            className="text-[12px] font-bold text-[#7A776E] hover:text-[#18181B] underline cursor-pointer"
+          >
+            Start Fresh / Clear
+          </button>
+        </div>
+      )}
+
       {/* Master Prompt Assistant */}
       <ChatbotPanel
         workflowName="Newsletter"
@@ -293,11 +348,14 @@ export default function NewsletterPage() {
               </label>
             </div>
 
-            {themeHistory.length > 0 && (
+            {/* Upload success banner with filename */}
+            {uploadedFileName && (
               <div className="mt-3 p-3 bg-[#BEE7A5] text-[#193E07] rounded-[16px] text-[12px] font-bold flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FaRegCircleCheck className="text-sm" />
-                  <span>Loaded {themeHistory.length} historical theme records into active memory</span>
+                  <span>
+                    Uploaded <span className="underline">{uploadedFileName}</span> — parsed {uploadedThemeCount} theme{uploadedThemeCount !== 1 ? 's' : ''}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -307,6 +365,58 @@ export default function NewsletterPage() {
                 >
                   <FaRegTrashCan className="text-xs" />
                 </button>
+              </div>
+            )}
+
+            {/* Expandable scrollable theme history list */}
+            {themeHistory.length > 0 && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setThemeHistoryExpanded(!themeHistoryExpanded)}
+                  className="w-full flex items-center justify-between p-3 bg-[#F7F5EE] border border-[#ECE7DD] rounded-[16px] text-[12px] font-bold text-[#18181B] cursor-pointer hover:bg-[#EFECE3] transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <FaRegFileExcel className="text-xs text-[#4C7C2C]" />
+                    <span>
+                      {themeHistory.length} historical theme{themeHistory.length !== 1 ? 's' : ''} loaded
+                    </span>
+                  </div>
+                  <span className="text-[#7A776E]">
+                    {themeHistoryExpanded ? '▲ Collapse' : '▼ Expand'}
+                  </span>
+                </button>
+
+                {themeHistoryExpanded && (
+                  <div className="mt-2 max-h-[300px] overflow-y-auto space-y-1.5 pr-1">
+                    {themeHistory.map((theme, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between gap-3 p-2.5 bg-white border border-[#ECE7DD] rounded-[14px] hover:border-[#151518]/20 transition-all group"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-medium text-[#18181B] truncate">{theme.theme}</p>
+                          {theme.date && (
+                            <span className="text-[10px] text-[#7A776E]">{theme.date}</span>
+                          )}
+                          {theme.notes && (
+                            <span className="text-[10px] text-[#9E9B92] ml-2">— {theme.notes}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTheme(theme.theme)
+                            setActiveTab('compose')
+                          }}
+                          className="px-3 py-1 bg-white hover:bg-[#151518] hover:text-white text-[#18181B] text-[10px] font-bold rounded-full border border-[#ECE7DD] transition-all cursor-pointer whitespace-nowrap opacity-70 group-hover:opacity-100"
+                        >
+                          Use for Newsletter →
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </Card>
@@ -451,6 +561,29 @@ export default function NewsletterPage() {
               ))}
             </div>
 
+            {/* Link previews for any URL-like entries */}
+            {postLinks.filter((l) => l.trim() && (l.includes('http') || l.includes('www'))).length > 0 && (
+              <div className="mt-3 space-y-2">
+                {postLinks
+                  .filter((l) => l.trim() && (l.includes('http') || l.includes('www')))
+                  .slice(0, 6)
+                  .map((link, i) => (
+                    <PostLinkPreview
+                      key={i}
+                      url={link.trim()}
+                      onRemove={() => {
+                        const idx = postLinks.indexOf(link)
+                        if (idx !== -1) {
+                          const next = [...postLinks]
+                          next[idx] = ''
+                          setPostLinks(next)
+                        }
+                      }}
+                    />
+                  ))}
+              </div>
+            )}
+
             <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
               <Button
                 variant="secondary"
@@ -554,6 +687,24 @@ export default function NewsletterPage() {
           )}
         </div>
       )}
+
+      <WorkflowChatPanel
+        workflow="newsletter"
+        workflowLabel="Newsletter"
+        modelId={selectedModel}
+        workflowContext={(() => {
+          const lines: string[] = []
+          const activeTheme = selectedTheme || customTheme.trim()
+          if (activeTheme) lines.push(`Active Theme: ${activeTheme}`)
+          const filledLinks = postLinks.filter(l => l.trim())
+          if (filledLinks.length > 0) {
+            lines.push(`Source Posts:\n${filledLinks.map((l, i) => `${i + 1}. ${l}`).join('\n')}`)
+          }
+          if (validation) lines.push(`Cohesion Score: ${validation.overallScore}`)
+          if (newsletterContent.trim()) lines.push(`Newsletter Draft:\n${newsletterContent.trim()}`)
+          return lines.join('\n\n')
+        })()}
+      />
     </div>
   )
 }

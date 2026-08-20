@@ -3,6 +3,8 @@
 import { useState, use } from 'react'
 import { createClient } from '@/lib/shared/supabase-browser'
 
+import { getAppUrl } from '@/lib/env'
+
 interface LoginPageProps {
   searchParams: Promise<{ error?: string }>
 }
@@ -26,10 +28,11 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
     setErrorMessage(null)
 
     try {
+      const baseUrl = getAppUrl()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${baseUrl}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',

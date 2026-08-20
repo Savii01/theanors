@@ -17,9 +17,10 @@ function calculateTimeLeft() {
 }
 
 export function CountdownTimer({ className = '' }: { className?: string }) {
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft)
+  const [timeLeft, setTimeLeft] = useState('—')
 
   useEffect(() => {
+    setTimeLeft(calculateTimeLeft())
     const interval = setInterval(() => setTimeLeft(calculateTimeLeft()), 60000)
     return () => clearInterval(interval)
   }, [])

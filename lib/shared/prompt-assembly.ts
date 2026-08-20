@@ -53,6 +53,25 @@ export async function assemblePrompt({
         .map((p) => `- ${p.preference_type}: ${p.preference_value}`)
         .join('\n')
     }
+
+    // Also fetch recent user training prompts from chat history
+    try {
+      const chatRows = (await neon`
+        SELECT role, content
+        FROM workflow_chat_history
+        WHERE user_id = ${userId} AND workflow = ${workflowType} AND role = 'user'
+        ORDER BY created_at DESC
+        LIMIT 3;
+      `) as { role: string; content: string }[]
+
+      if (chatRows.length > 0) {
+        preferenceContext += '\nRecent User Training & Style Directives from Chat:\n' + chatRows
+          .map((c) => `• "${c.content.slice(0, 150)}"`)
+          .join('\n')
+      }
+    } catch {
+      // Table might not exist yet
+    }
   } catch (neonErr) {
     console.warn('Neon assemblePrompt fallback warning:', neonErr)
   }
@@ -88,8 +107,14 @@ export async function assemblePrompt({
     }
   }
 
+  // Keep brand voice focused and prevent 413 / payload overflow
+  const cleanBrandVoice =
+    globalBrandVoice.length > 2500
+      ? globalBrandVoice.slice(0, 2500) + '...\n[Voice summary: Warm, grounded, systems-driven, professional]'
+      : globalBrandVoice
+
   const systemPrompt = [
-    globalBrandVoice && `Brand Voice:\n${globalBrandVoice}`,
+    cleanBrandVoice && `Brand Voice:\n${cleanBrandVoice}`,
     masterWorkflowPrompt && `Workflow Instructions:\n${masterWorkflowPrompt}`,
     preferenceContext && `Self-Training Context:\n${preferenceContext}`,
   ]
@@ -97,7 +122,7 @@ export async function assemblePrompt({
     .join('\n\n')
 
   return {
-    systemPrompt: systemPrompt || 'You are a helpful content operations assistant.',
+    systemPrompt: systemPrompt || 'You are Clara Chukwu, founder of Boss Behind The Boss.',
     userPrompt: userRequest,
   }
 }

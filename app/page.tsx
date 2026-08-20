@@ -16,7 +16,18 @@ import {
   FaPlus,
   FaRegFolderOpen,
   FaRegCalendar,
+  FaRegComments,
+  FaLightbulb,
+  FaBrain,
 } from 'react-icons/fa6'
+
+interface RecentEntry {
+  id: string
+  workflow: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
 
 function getDynamicGreeting(): string {
   const hour = new Date().getHours()
@@ -44,6 +55,11 @@ export default function DashboardPage() {
   const greeting = getDynamicGreeting()
   const supabase = createClient()
 
+  // Recent AI chat history state
+  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
+  const [recentTotalCount, setRecentTotalCount] = useState(0)
+  const [chatFilter, setChatFilter] = useState<string>('all')
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) {
@@ -54,6 +70,14 @@ export default function DashboardPage() {
     fetch('/api/settings/brand-voice')
       .then((r) => r.json())
       .then((data) => setBrandVoice(data.brandVoice ?? ''))
+      .catch(() => {})
+
+    fetch('/api/chat/recent')
+      .then((r) => r.json())
+      .then((data) => {
+        setRecentEntries(data.entries ?? [])
+        setRecentTotalCount(data.totalCount ?? 0)
+      })
       .catch(() => {})
   }, [supabase.auth])
 
@@ -66,6 +90,57 @@ export default function DashboardPage() {
     })
       .then(() => setSaving(false))
       .catch(() => setSaving(false))
+  }
+
+  // Workflow color/badge mapping
+  const workflowMeta: Record<string, { label: string; bgColor: string; textColor: string; borderColor: string; link: string }> = {
+    engagement: { label: 'Engagement', bgColor: '#FEE775', textColor: '#3D3200', borderColor: '#E6CF4B', link: '/engagement' },
+    captions: { label: 'Captions', bgColor: '#FFBBE2', textColor: '#4C0028', borderColor: '#F3A0CE', link: '/captions' },
+    scripting: { label: 'Scripting', bgColor: '#BEE7A5', textColor: '#193E07', borderColor: '#8BC968', link: '/scripting' },
+    newsletter: { label: 'Newsletter', bgColor: '#A9CBFA', textColor: '#082956', borderColor: '#75A7EC', link: '/newsletter' },
+    comments: { label: 'Comments', bgColor: '#DDD4FB', textColor: '#2B1869', borderColor: '#B2A2F0', link: '/comments' },
+  }
+
+  const formatRelativeTime = (iso: string): string => {
+    const date = new Date(iso)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 1) return 'Just now'
+    if (diffMin < 60) return `${diffMin}m ago`
+    const diffHr = Math.floor(diffMin / 60)
+    if (diffHr < 24) return `${diffHr}h ago`
+    const diffDay = Math.floor(diffHr / 24)
+    if (diffDay === 1) return 'Yesterday'
+    if (diffDay < 7) return `${diffDay}d ago`
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const filteredEntries = chatFilter === 'all'
+    ? recentEntries
+    : recentEntries.filter((e) => e.workflow === chatFilter)
+
+  // Group consecutive user+assistant pairs into conversation turns
+  interface ConversationTurn {
+    workflow: string
+    userMsg: RecentEntry
+    assistantMsg: RecentEntry | null
+  }
+
+  const conversationTurns: ConversationTurn[] = []
+  for (let i = 0; i < filteredEntries.length; i++) {
+    const entry = filteredEntries[i]
+    if (entry.role === 'assistant') {
+      // Check if previous entry is a user message from same workflow
+      const prev = conversationTurns.length > 0 ? conversationTurns[conversationTurns.length - 1] : null
+      if (prev && prev.workflow === entry.workflow && !prev.assistantMsg) {
+        prev.assistantMsg = entry
+      } else {
+        conversationTurns.push({ workflow: entry.workflow, userMsg: entry, assistantMsg: null })
+      }
+    } else {
+      conversationTurns.push({ workflow: entry.workflow, userMsg: entry, assistantMsg: null })
+    }
   }
 
   const currentDate = new Date()
@@ -241,6 +316,161 @@ export default function DashboardPage() {
             placeholder="e.g. Authentic founder voice: sharp, data-informed, punchy 1-2 sentence insights, no corporate jargon, authoritative but warm tone..."
             helpText="Auto-saves on blur. Changes update live across Engagement, Captions, Scripts, and Newsletters."
           />
+        </Card>
+
+        {/* Recent AI Training & Chat History */}
+        <Card
+          title="Recent AI Training & Chat History"
+          subtitle="Conversations and training interactions across all workflows"
+          action={
+            recentTotalCount > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#F7F5EE] border border-[#ECE7DD] rounded-full text-[11px] font-bold text-[#18181B]">
+                  <FaRegComments className="text-[10px] text-[#FF88C2]" />
+                  {recentTotalCount} turns
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#BEE7A5] text-[#193E07] rounded-full text-[10px] font-bold">
+                  <FaBrain className="text-[9px]" />
+                  Learning Active
+                </span>
+              </div>
+            ) : undefined
+          }
+        >
+          {/* Workflow Filter Tabs */}
+          {recentTotalCount > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'engagement', label: 'Engagement' },
+                { key: 'captions', label: 'Captions' },
+                { key: 'scripting', label: 'Scripting' },
+                { key: 'newsletter', label: 'Newsletter' },
+                { key: 'comments', label: 'Comments' },
+              ].map((f) => {
+                const isActive = chatFilter === f.key
+                const meta = f.key !== 'all' ? workflowMeta[f.key] : null
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setChatFilter(f.key)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-full transition-all cursor-pointer whitespace-nowrap border
+                      ${
+                        isActive
+                          ? f.key === 'all'
+                            ? 'bg-[#151518] text-white border-[#151518] shadow-xs'
+                            : 'shadow-xs'
+                          : 'bg-white text-[#7A776E] border-[#ECE7DD] hover:text-[#18181B] hover:bg-[#F7F5EE]'
+                      }`}
+                    style={
+                      isActive && meta
+                        ? { backgroundColor: meta.bgColor, color: meta.textColor, borderColor: meta.borderColor }
+                        : isActive && f.key === 'all'
+                          ? undefined
+                          : undefined
+                    }
+                  >
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Conversation Feed */}
+          {conversationTurns.length > 0 ? (
+            <div className="space-y-2.5">
+              {conversationTurns.slice(0, 8).map((turn, i) => {
+                const meta = workflowMeta[turn.workflow] || { label: turn.workflow, bgColor: '#F7F5EE', textColor: '#18181B', borderColor: '#ECE7DD', link: '/' + turn.workflow }
+                return (
+                  <div
+                    key={turn.userMsg.id + i}
+                    className="p-3.5 bg-[#F7F5EE] border border-[#ECE7DD] rounded-[18px] hover:bg-white hover:border-[#151518]/20 transition-all group"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span
+                        className="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider"
+                        style={{ backgroundColor: meta.bgColor, color: meta.textColor }}
+                      >
+                        {meta.label}
+                      </span>
+                      <span className="text-[10px] text-[#9E9B92] font-mono">
+                        {formatRelativeTime(turn.userMsg.created_at)}
+                      </span>
+                    </div>
+
+                    {/* User message */}
+                    <div className="flex items-start gap-2 mb-1.5">
+                      <span className="px-1.5 py-0.5 bg-[#151518] text-white text-[8px] font-bold rounded-full mt-0.5 flex-shrink-0">
+                        YOU
+                      </span>
+                      <p className="text-[12px] text-[#18181B] leading-relaxed line-clamp-2">
+                        {turn.userMsg.content}
+                      </p>
+                    </div>
+
+                    {/* Assistant response snippet */}
+                    {turn.assistantMsg && (
+                      <div className="flex items-start gap-2">
+                        <span className="px-1.5 py-0.5 bg-[#FF88C2] text-[#4C0028] text-[8px] font-bold rounded-full mt-0.5 flex-shrink-0">
+                          AI
+                        </span>
+                        <p className="text-[11px] text-[#7A776E] leading-relaxed line-clamp-2">
+                          {turn.assistantMsg.content}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Link to workflow chat */}
+                    <div className="mt-2.5 pt-2 border-t border-[#ECE7DD] opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => router.push(meta.link)}
+                        className="text-[10px] font-bold text-[#FF88C2] hover:text-[#4C0028] inline-flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        Open {meta.label} Chat <FaArrowRight className="text-[9px]" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="py-8 px-4 text-center bg-[#F7F5EE] rounded-[20px] border border-[#ECE7DD]">
+              <FaLightbulb className="text-2xl mx-auto mb-2 text-[#FF88C2]" />
+              <span className="text-[13px] font-bold text-[#18181B] block">
+                No AI conversations yet
+              </span>
+              <span className="text-[11px] text-[#7A776E] block mt-1 max-w-[300px] mx-auto leading-relaxed">
+                Open any workflow and click &quot;Chat with AI&quot; to start training your model. Every correction and instruction is saved here.
+              </span>
+            </div>
+          )}
+
+          {/* Quick Stats Footer */}
+          {recentTotalCount > 0 && (
+            <div className="mt-3 pt-3 border-t border-[#ECE7DD] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {Object.entries(workflowMeta).map(([key, meta]) => {
+                  const count = recentEntries.filter((e) => e.workflow === key).length
+                  if (count === 0) return null
+                  return (
+                    <span
+                      key={key}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: meta.bgColor, color: meta.textColor }}
+                    >
+                      {meta.label}: {count}
+                    </span>
+                  )
+                })}
+              </div>
+              <span className="text-[10px] text-[#9E9B92]">
+                {recentEntries.length} recent of {recentTotalCount} total
+              </span>
+            </div>
+          )}
         </Card>
 
         {/* Operations Activity & Quick Launcher */}

@@ -7,7 +7,9 @@ import { Textarea } from '@/components/ui/Input'
 import { ModelSelector } from '@/components/ui/ModelSelector'
 import { LimitAlert } from '@/components/ui/LimitAlert'
 import { ChatbotPanel } from '@/components/ui/ChatbotPanel'
+import { WorkflowChatPanel } from '@/components/ui/WorkflowChatPanel'
 import { TranscriptConfirm } from '@/components/ui/TranscriptConfirm'
+import { PostLinkPreview } from '@/components/ui/PostLinkPreview'
 import { FeedbackActions } from '@/components/ui/FeedbackActions'
 import { LLM_MODELS } from '@/lib/shared/types'
 import type { CaptionPlatform, ModelLimits } from '@/lib/shared/types'
@@ -26,7 +28,7 @@ type InputTab = 'upload' | 'link' | 'paste'
 
 export default function CaptionsPage() {
   const [masterPrompt, setMasterPrompt] = useState('')
-  const [selectedModel, setSelectedModel] = useState('allam-2-7b')
+  const [selectedModel, setSelectedModel] = useState('gemini')
   const [limits, setLimits] = useState<ModelLimits>({})
   const [activeTab, setActiveTab] = useState<InputTab>('upload')
   const [videoLink, setVideoLink] = useState('')
@@ -56,6 +58,44 @@ export default function CaptionsPage() {
       .then((data) => setLimits(data.limits ?? {}))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    try {
+      const savedTranscript = localStorage.getItem('theanors_captions_transcript')
+      if (savedTranscript) {
+        setTranscript(savedTranscript)
+        setConfirmedTranscript(savedTranscript)
+      }
+      const savedCaptions = localStorage.getItem('theanors_captions_results')
+      if (savedCaptions) {
+        const parsed = JSON.parse(savedCaptions)
+        if (typeof parsed === 'object' && parsed !== null) {
+          setCaptions(parsed)
+        }
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      if (confirmedTranscript) {
+        localStorage.setItem('theanors_captions_transcript', confirmedTranscript)
+      } else {
+        localStorage.removeItem('theanors_captions_transcript')
+      }
+    } catch {}
+  }, [confirmedTranscript])
+
+  useEffect(() => {
+    try {
+      const hasCaptions = Object.values(captions).some(v => v.trim())
+      if (hasCaptions) {
+        localStorage.setItem('theanors_captions_results', JSON.stringify(captions))
+      } else {
+        localStorage.removeItem('theanors_captions_results')
+      }
+    } catch {}
+  }, [captions])
 
   const handleFileUpload = async (file: File) => {
     setTranscribing(true)
@@ -152,6 +192,26 @@ export default function CaptionsPage() {
 
       {limitHit && <LimitAlert modelName={limitHit} />}
 
+      {(confirmedTranscript || Object.values(captions).some(v => v.trim())) && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setTranscript('')
+              setConfirmedTranscript('')
+              setCaptions({ linkedin: '', tiktok: '', instagram: '', youtube_title: '', youtube_desc: '' })
+              try {
+                localStorage.removeItem('theanors_captions_transcript')
+                localStorage.removeItem('theanors_captions_results')
+              } catch {}
+            }}
+            className="text-[12px] font-bold text-[#7A776E] hover:text-[#18181B] underline cursor-pointer"
+          >
+            Start Fresh / Clear
+          </button>
+        </div>
+      )}
+
       {/* Master Prompt Assistant */}
       <ChatbotPanel
         workflowName="Captions"
@@ -224,6 +284,9 @@ export default function CaptionsPage() {
               rows={2}
               placeholder="https://youtube.com/watch?v=... or https://instagram.com/reel/..."
             />
+            {videoLink.trim() && (
+              <PostLinkPreview url={videoLink.trim()} />
+            )}
             <Button
               variant="dark"
               size="sm"
@@ -377,6 +440,28 @@ export default function CaptionsPage() {
           </div>
         </div>
       )}
+
+      <WorkflowChatPanel
+        workflow="captions"
+        workflowLabel="Captions"
+        modelId={selectedModel}
+        workflowContext={(() => {
+          const lines: string[] = []
+          if (confirmedTranscript.trim()) {
+            lines.push(`Active Media Transcript:\n${confirmedTranscript.trim()}`)
+          } else if (videoLink.trim()) {
+            lines.push(`Video Link: ${videoLink.trim()}`)
+          }
+          const captionEntries = Object.entries(captions).filter(([, v]) => v.trim())
+          if (captionEntries.length > 0) {
+            lines.push('Generated Captions:')
+            captionEntries.forEach(([platform, text], i) => {
+              lines.push(`${i + 1}. [${platform}]: ${text}`)
+            })
+          }
+          return lines.join('\n\n')
+        })()}
+      />
     </div>
   )
 }

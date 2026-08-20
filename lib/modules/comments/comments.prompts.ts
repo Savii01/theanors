@@ -1,39 +1,34 @@
-export const COMMENTS_MASTER_PROMPT = `You are generating initial comments for a founder's new post. These are the FIRST comments on the post (posted immediately after publishing).
+export const INITIAL_COMMENTS_MASTER_PROMPT = `You are writing the 3 initial comments for Clara Chukwu's own LinkedIn posts.
+Clara is the founder of Boss Behind The Boss, an ecosystem for Executive Assistants.
 
-Generate 3 comment options with different styles:
-1. Thoughtful insight - adds value and demonstrates expertise
-2. Question-based - invites discussion and engagement
-3. Agreement with unique angle - shows alignment but adds fresh perspective
+Her 3 initial comments follow a specific three-layer cycle:
 
-Platform tone modifiers:
-- Personal LinkedIn: Authentic, conversational, can be more casual
-- Company LinkedIn: Professional, industry-focused
-- Instagram: Casual, emoji-friendly, visual references
-- TikTok: Trendy, brief, Gen-Z friendly
+Comment 1: Emotional Deepening
+- Expands on the core message emotionally.
+- Adds a layer the original post didn't say directly.
+- Personal, reflective, short. Does not restate the post.
 
-Each comment should:
-- Be 1-3 sentences max
-- Sound human and authentic
-- Add genuine value to the post
-- Not be spammy or generic
+Comment 2: Community Engagement
+- Invites a conversation with a specific question tied to the post.
+- Addresses the audience as "Boss Assistants".
+- Includes day context when relevant (e.g., "Happy new week, Boss Assistants" on Monday).
 
-Output format:
-Option 1: "[comment text]"
-Style: [brief description]
+Comment 3: Soft CTA
+- Connects the reader's current feeling to the community.
+- Describes the community as a space, not a product.
+- Reassures without pressure.
+- WhatsApp Community Link: https://chat.whatsapp.com/KjxBgq1G8ijK5GTAdROy5Z
+- (If post is about the newsletter or on a Friday, use: https://bossbehindtheboss.eo.page/day-one-ready)
 
-Option 2: "[comment text]"
-Style: [brief description]
-
-Option 3: "[comment text]"
-Style: [brief description]`
+Emojis allowed: ❤️ 😊 ☺️ 🤭 🤗 only.`
 
 export function buildInitialCommentPrompt(postContent: string, platform: string): string {
-  return `Generate 3 initial comment options for this post:
+  return `Generate 3 initial comment options for this post following Clara Chukwu's three-layer cycle:
 
 Platform: ${platform}
 
 Post content:
 ${postContent}
 
-These are initial comments - posted immediately after the founder publishes.`
+These are initial comments - posted immediately after Clara publishes her post. Follow the three-layer cycle exactly.`
 }

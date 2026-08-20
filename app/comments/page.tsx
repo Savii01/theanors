@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { ModelSelector } from '@/components/ui/ModelSelector'
 import { LimitAlert } from '@/components/ui/LimitAlert'
 import { ChatbotPanel } from '@/components/ui/ChatbotPanel'
+import { WorkflowChatPanel } from '@/components/ui/WorkflowChatPanel'
 import { FeedbackActions } from '@/components/ui/FeedbackActions'
 import { LLM_MODELS } from '@/lib/shared/types'
 import type { CommentOption, ModelLimits } from '@/lib/shared/types'
@@ -18,13 +19,14 @@ import {
   FaRegCircleCheck,
   FaRegCopy,
   FaBolt,
+  FaXmark,
 } from 'react-icons/fa6'
 
 type Platform = 'personal_linkedin' | 'company_linkedin' | 'instagram' | 'tiktok'
 
 export default function CommentsPage() {
   const [masterPrompt, setMasterPrompt] = useState('')
-  const [selectedModel, setSelectedModel] = useState('allam-2-7b')
+  const [selectedModel, setSelectedModel] = useState('gemini')
   const [limits, setLimits] = useState<ModelLimits>({})
   const [postLink, setPostLink] = useState('')
   const [platform, setPlatform] = useState<Platform>('personal_linkedin')
@@ -45,6 +47,33 @@ export default function CommentsPage() {
       .then((data) => setLimits(data.limits ?? {}))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('theanors_initial_comments_state')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.postLink) setPostLink(parsed.postLink)
+        if (parsed.platform) setPlatform(parsed.platform)
+        if (Array.isArray(parsed.options) && parsed.options.length > 0) setOptions(parsed.options)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      const hasState = postLink || options.length > 0
+      if (hasState) {
+        localStorage.setItem('theanors_initial_comments_state', JSON.stringify({
+          postLink,
+          platform,
+          options,
+        }))
+      } else {
+        localStorage.removeItem('theanors_initial_comments_state')
+      }
+    } catch {}
+  }, [postLink, platform, options])
 
   const handleGenerate = async () => {
     if (!postLink.trim()) return
@@ -79,6 +108,10 @@ export default function CommentsPage() {
     setPosted((prev) => ({ ...prev, [optionNumber]: true }))
   }
 
+  const handleRejectOption = (optionNumber: number) => {
+    setOptions((prev) => prev.filter((o) => o.option !== optionNumber))
+  }
+
   const platforms: { value: Platform; label: string; icon: React.ReactNode }[] = [
     { value: 'personal_linkedin', label: 'Personal LinkedIn', icon: <FaRegUser className="text-xs" /> },
     { value: 'company_linkedin', label: 'Company Page', icon: <FaRegBuilding className="text-xs" /> },
@@ -107,6 +140,23 @@ export default function CommentsPage() {
       />
 
       {limitHit && <LimitAlert modelName={limitHit} />}
+
+      {(postLink || options.length > 0) && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setPostLink('')
+              setOptions([])
+              setPosted({})
+              try { localStorage.removeItem('theanors_initial_comments_state') } catch {}
+            }}
+            className="text-[12px] font-bold text-[#7A776E] hover:text-[#18181B] underline cursor-pointer"
+          >
+            Start Fresh / Clear
+          </button>
+        </div>
+      )}
 
       {/* Master Prompt Assistant */}
       <ChatbotPanel
@@ -212,6 +262,15 @@ export default function CommentsPage() {
                         </>
                       )}
                     </button>
+                    {!isPosted && (
+                      <button
+                        onClick={() => handleRejectOption(opt.option)}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white hover:bg-[#FEE775] text-[#7A776E] hover:text-[#18181B] border border-[#ECE7DD] transition-all cursor-pointer"
+                        title="Reject option"
+                      >
+                        <FaXmark className="text-[11px]" />
+                      </button>
+                    )}
                   </div>
                 }
               >
@@ -224,6 +283,25 @@ export default function CommentsPage() {
           })}
         </div>
       )}
+
+      <WorkflowChatPanel
+        workflow="comments"
+        workflowLabel="Initial Comments"
+        modelId={selectedModel}
+        workflowContext={(() => {
+          const lines: string[] = []
+          if (postLink.trim()) lines.push(`Post URL: ${postLink.trim()}`)
+          lines.push(`Platform: ${platform.replace(/_/g, ' ')}`)
+          if (options.length > 0) {
+            lines.push('Generated Initial Comments:')
+            options.forEach((opt, i) => {
+              const status = posted[i] ? ' [POSTED]' : ''
+              lines.push(`Option ${i + 1} (${opt.style}): ${opt.text}${status}`)
+            })
+          }
+          return lines.join('\n\n')
+        })()}
+      />
     </div>
   )
 }

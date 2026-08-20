@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Textarea } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { ChatbotPanel } from '@/components/ui/ChatbotPanel'
+import { ModelManagementPanel } from '@/components/ui/ModelManagementPanel'
 import gsap from 'gsap'
 import {
   FaRegCommentDots,
@@ -16,9 +17,10 @@ import {
   FaRegTrashCan,
   FaRegFloppyDisk,
   FaRegSun,
+  FaBolt,
 } from 'react-icons/fa6'
 
-type SettingsTab = 'brand' | 'prompts' | 'memory'
+type SettingsTab = 'brand' | 'prompts' | 'memory' | 'models'
 
 const workflows = [
   { key: 'engagement', label: 'Engagement', icon: <FaRegCommentDots className="text-xs" /> },
@@ -91,6 +93,7 @@ export default function SettingsPage() {
     { key: 'brand', label: 'Brand Voice', icon: <FaRegSun className="text-xs" /> },
     { key: 'prompts', label: 'Master Prompts', icon: <FaRegPenToSquare className="text-xs" /> },
     { key: 'memory', label: 'Learned Memory', icon: <FaRegBookmark className="text-xs" /> },
+    { key: 'models', label: 'Models', icon: <FaBolt className="text-xs" /> },
   ]
 
   return (
@@ -236,6 +239,11 @@ export default function SettingsPage() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* Tab 4: Model Availability Management */}
+      {activeTab === 'models' && (
+        <ModelManagementPanel />
       )}
     </div>
   )

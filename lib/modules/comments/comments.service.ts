@@ -1,6 +1,6 @@
 import { generateText } from '@/lib/shared/llm-client'
 import { assemblePrompt } from '@/lib/shared/prompt-assembly'
-import { COMMENTS_MASTER_PROMPT, buildInitialCommentPrompt } from './comments.prompts'
+import { INITIAL_COMMENTS_MASTER_PROMPT, buildInitialCommentPrompt } from './comments.prompts'
 import type { CommentOption } from './comments.types'
 
 export async function generateInitialComments(
@@ -19,7 +19,7 @@ export async function generateInitialComments(
     modelId,
     prompt: buildInitialCommentPrompt(postLink, platform),
     globalBrandVoice: '',
-    masterWorkflowPrompt: systemPrompt + '\n\n' + COMMENTS_MASTER_PROMPT,
+    masterWorkflowPrompt: systemPrompt + '\n\n' + INITIAL_COMMENTS_MASTER_PROMPT,
   })
 
   return parseCommentOptions(response)

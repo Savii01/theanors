@@ -7,14 +7,14 @@ import { ENGAGEMENT_MASTER_PROMPT } from '@/lib/modules/engagement/engagement.pr
 import { CAPTION_MASTER_PROMPT } from '@/lib/modules/captions/captions.prompts'
 import { SCRIPTING_MASTER_PROMPT } from '@/lib/modules/scripting/scripting.prompts'
 import { NEWSLETTER_MASTER_PROMPT } from '@/lib/modules/newsletter/newsletter.prompts'
-import { COMMENTS_MASTER_PROMPT } from '@/lib/modules/comments/comments.prompts'
+import { INITIAL_COMMENTS_MASTER_PROMPT } from '@/lib/modules/comments/comments.prompts'
 
 const WORKFLOW_PROMPTS: Record<string, string> = {
   engagement: ENGAGEMENT_MASTER_PROMPT,
   captions: CAPTION_MASTER_PROMPT,
   scripting: SCRIPTING_MASTER_PROMPT,
   newsletter: NEWSLETTER_MASTER_PROMPT,
-  comments: COMMENTS_MASTER_PROMPT,
+  comments: INITIAL_COMMENTS_MASTER_PROMPT,
 }
 
 export async function GET(

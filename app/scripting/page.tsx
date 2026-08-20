@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/Input'
 import { ModelSelector } from '@/components/ui/ModelSelector'
 import { LimitAlert } from '@/components/ui/LimitAlert'
 import { ChatbotPanel } from '@/components/ui/ChatbotPanel'
+import { WorkflowChatPanel } from '@/components/ui/WorkflowChatPanel'
 import { TranscriptConfirm } from '@/components/ui/TranscriptConfirm'
 import { FeedbackActions } from '@/components/ui/FeedbackActions'
 import { LLM_MODELS } from '@/lib/shared/types'
@@ -27,7 +28,7 @@ type InputMode = 'topic' | 'video' | 'upload'
 
 export default function ScriptingPage() {
   const [masterPrompt, setMasterPrompt] = useState('')
-  const [selectedModel, setSelectedModel] = useState('allam-2-7b')
+  const [selectedModel, setSelectedModel] = useState('gemini')
   const [limits, setLimits] = useState<ModelLimits>({})
   const [inputMode, setInputMode] = useState<InputMode>('topic')
   const [topic, setTopic] = useState('')
@@ -52,6 +53,37 @@ export default function ScriptingPage() {
       .then((data) => setLimits(data.limits ?? {}))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('theanors_scripting_state')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.topic) setTopic(parsed.topic)
+        if (parsed.confirmedTranscript) setConfirmedTranscript(parsed.confirmedTranscript)
+        if (parsed.selectedAngle) setSelectedAngle(parsed.selectedAngle)
+        if (parsed.scriptType) setScriptType(parsed.scriptType)
+        if (parsed.generatedScript) setGeneratedScript(parsed.generatedScript)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      const hasState = topic || confirmedTranscript || generatedScript
+      if (hasState) {
+        localStorage.setItem('theanors_scripting_state', JSON.stringify({
+          topic,
+          confirmedTranscript,
+          selectedAngle,
+          scriptType,
+          generatedScript,
+        }))
+      } else {
+        localStorage.removeItem('theanors_scripting_state')
+      }
+    } catch {}
+  }, [topic, confirmedTranscript, selectedAngle, scriptType, generatedScript])
 
   const handleBrainstorm = async () => {
     if (!topic.trim()) return
@@ -165,6 +197,24 @@ export default function ScriptingPage() {
       />
 
       {limitHit && <LimitAlert modelName={limitHit} />}
+
+      {(topic || confirmedTranscript || generatedScript) && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setTopic('')
+              setConfirmedTranscript('')
+              setSelectedAngle('')
+              setGeneratedScript('')
+              try { localStorage.removeItem('theanors_scripting_state') } catch {}
+            }}
+            className="text-[12px] font-bold text-[#7A776E] hover:text-[#18181B] underline cursor-pointer"
+          >
+            Start Fresh / Clear
+          </button>
+        </div>
+      )}
 
       {/* Master Prompt Assistant */}
       <ChatbotPanel
@@ -407,6 +457,22 @@ export default function ScriptingPage() {
           </div>
         </Card>
       )}
+
+      <WorkflowChatPanel
+        workflow="scripting"
+        workflowLabel="Scripting"
+        modelId={selectedModel}
+        workflowContext={(() => {
+          const lines: string[] = []
+          if (topic.trim()) lines.push(`Content Topic: ${topic.trim()}`)
+          if (videoLink.trim()) lines.push(`Source Video: ${videoLink.trim()}`)
+          if (confirmedTranscript.trim()) lines.push(`Confirmed Transcript:\n${confirmedTranscript.trim()}`)
+          if (selectedAngle) lines.push(`Selected Angle: ${selectedAngle}`)
+          lines.push(`Format: ${scriptType.replace(/_/g, ' ')}`)
+          if (generatedScript.trim()) lines.push(`Generated Script:\n${generatedScript.trim()}`)
+          return lines.join('\n\n')
+        })()}
+      />
     </div>
   )
 }
